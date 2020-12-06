@@ -8,7 +8,7 @@
 
 import UIKit
 
-class ViewController: UIViewController {
+class ViewController: UIViewController,UITextFieldDelegate {
     @IBOutlet var wordLabel: UILabel!
     @IBOutlet var textField: UITextField!
     
@@ -25,7 +25,9 @@ class ViewController: UIViewController {
     
     override func viewDidLoad() {
         super.viewDidLoad()
-       
+
+        textField.delegate = self
+        
         
         startGame()
         
@@ -34,52 +36,89 @@ class ViewController: UIViewController {
         
     }
     
-    func startGame() {
-        usedLetters.removeAll(keepingCapacity: true)
-        wordLetters.removeAll(keepingCapacity: true)
-        labelStrArr.removeAll(keepingCapacity: true)
-        
-        words.shuffle()
-
-        let choosedWord = words[0]
-        
-        for letter in choosedWord {
-            labelStrArr.append("?")
-            wordLetters.append(String(letter))
-        }
-        
-        labelStr = labelStrArr.joined()
+    func textField(_ textField: UITextField, shouldChangeCharactersIn range: NSRange, replacementString string: String) -> Bool {
+        let currentString: NSString = (textField.text ?? "") as NSString
+        let newString: NSString = currentString.replacingCharacters(in: range, with: string) as NSString
+        return newString.length <= 1
     }
+    
+    
+    func startGame() {
+        
+        DispatchQueue.global(qos: .userInitiated).async {
+            [weak self] in
+            self?.usedLetters.removeAll(keepingCapacity: true)
+            self?.wordLetters.removeAll(keepingCapacity: true)
+            self?.labelStrArr.removeAll(keepingCapacity: true)
+            self?.tries = 0
+            
+            self?.words.shuffle()
+            
+            let choosedWord = self?.words[0]
+            
+            for letter in choosedWord! {
+                self?.labelStrArr.append("?")
+                self?.wordLetters.append(String(letter))
+            }
+        }
+        DispatchQueue.main.async {
+            [weak self] in
+            self?.labelStr = (self?.labelStrArr.joined())!
 
+        }
+    }
+    
     @IBAction func submitTapped(_ sender: UIButton) {
+        
+        
         if let typedLetter = textField.text {
             if usedLetters.contains(typedLetter.lowercased()){
                 let ac = UIAlertController(title: "this letter is used", message: "try another one", preferredStyle: .alert)
                 ac.addAction(UIAlertAction(title: "OK", style: .default, handler: nil))
                 present(ac,animated: true)
             }
-            for (index, letter) in wordLetters.enumerated() {
-                if typedLetter.lowercased() == letter.lowercased(){
-                    labelStrArr.remove(at: index)
-                    labelStrArr.insert(letter, at: index)
-                    labelStr = labelStrArr.joined()
-
-                    usedLetters.append(letter.lowercased())
-                    
-                    textField.text = ""
+            
+            if wordLetters.contains(typedLetter.uppercased()){
+                for (index, letter) in wordLetters.enumerated() {
+                    if typedLetter.lowercased() == letter.lowercased(){
+                        labelStrArr.remove(at: index)
+                        labelStrArr.insert(letter, at: index)
+                        labelStr = labelStrArr.joined()
+                        
+                        usedLetters.append(letter.lowercased())
+                        
+                        textField.text = ""
+                    }
                 }
+                
+                if !labelStrArr.contains("?") {
+                    let ac = UIAlertController(title: "Congrats you won", message: nil, preferredStyle: .alert)
+                    ac.addAction(UIAlertAction(title: "OK", style: .default, handler: nil))
+                    present(ac,animated: true)
+                    startGame()
+                }
+                
+            }else {
+                tries += 1
+
+                textField.text = ""
+                let ac = UIAlertController(title: "wrong letter", message: "you made \(tries) mistake", preferredStyle: .alert)
+                ac.addAction(UIAlertAction(title: "OK", style: .default , handler: nil))
+                present(ac,animated: true)
+                
+                if tries == 7 {
+                    startGame()
+                }
+                
+                
+                
             }
-        }else {
-            let ac = UIAlertController(title: "wrong letter", message: "try another one", preferredStyle: .alert)
-            ac.addAction(UIAlertAction(title: "OK", style: .default , handler: nil))
-            present(ac,animated: true)
-            if tries == 7 {
-                //code will be here
-            }
-            tries += 1
+            
             
         }
+            
     }
-    
 }
+    
+
 
